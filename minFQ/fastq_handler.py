@@ -17,7 +17,7 @@ from minFQ.fastq_handler_utils import (
     unseen_files_in_watch_folder_dict,
     _prepare_toml,
     OpenLine,
-    create_run_collection, average_quality, check_is_pass,
+    create_run_collection, average_quality, check_is_pass, ReadBam,
 )
 from watchdog.events import FileSystemEventHandler
 
@@ -225,7 +225,9 @@ def parse_fastq_file(
     # for read in gen:
     handle = gzip.open if fastq_path.endswith(".gz") else open
     with handle(fastq_path, "rt") as fh:
-        for desc, name, seq, qual in readfq(fh):
+        ### Parsing fastq
+        #   for desc, name, seq, qual in readfq(fh):
+        for desc, name, seq, qual in ReadBam(bam_file=fh).read_bam():  # Editied for parsing bam desc
             description_dict = parse_fastq_description(desc)
             counter += 1
             sequencing_stats.reads_seen += 1
@@ -247,6 +249,7 @@ def parse_fastq_file(
                         EndPoint.FASTQ_FILE, json=payload, base_id=run_id
                     )
                     run_dict[run_id].get_readnames_by_run(fastq_file["id"])
+
                 parse_fastq_record(
                     name,
                     seq,
@@ -358,7 +361,7 @@ class FastqHandler(FileSystemEventHandler):
                 # remove the file from fastq files to create as we are doing that now
                 if create_time > time.time() - 5:
                     time.sleep(5)
-                # file created 5 sec ago, so should be complete. For simulations we make the time longer.
+                # file created 5 sec ago, so should be complete. For simulations, we make the time longer.
                 del self.fastq_files_to_create[fastqfile]
                 parse_fastq_file(
                     fastqfile,

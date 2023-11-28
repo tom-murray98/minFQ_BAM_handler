@@ -13,3 +13,5 @@ minknow-api
 validators
 grpcio-tools
 toml
+click
+pysam
