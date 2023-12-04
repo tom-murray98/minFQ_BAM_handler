@@ -275,31 +275,51 @@ def average_quality(quality):
     )
 
 
-def get_runid(fastq):
+def get_runid(file_path):
     """
-    Open a fastq file, read the first line and parse out the Run ID
-    :param fastq: path to the fastq file to be parsed
-    :type fastq: str
-    :return runid: The run ID of this fastq file as a string
+    Open a file, read the first line and parse out the Run ID
+    :param file_path: path to the file to be parsed
+    :type file_path: str
+    :return runid: The run ID of this file as a string
     """
+
     runid = ""  # EDITED TO INCLUDE BAM FILES
-    if fastq.endswith(".bam"):
-        with pysam.AlignmentFile(fastq, 'rb', check_sq=False) as file:
-            rg_tags = file.header.get('RG', [])
+    file_suffix = Path(file_path).suffix
+
+    if file_suffix == ".bam":
+        with pysam.AlignmentFile(file_path, 'rb', check_sq=False) as file_path:
+            rg_tags = file_path.header.get('RG', [])
             rg_tag = rg_tags[0]
             line = rg_tag.get('DS', '').split(' ')[0]
-    elif fastq.endswith(".gz"):
-        with gzip.open(fastq, "rt") as file:
+    elif file_suffix == ".gz":
+        with gzip.open(file_path, "rt") as file_path:
             for _ in range(1):
-                line = file.readline()
-    else:
-        with open(fastq, "r") as file:
+                line = file_path.readline()
+    else:  # this only works for others
+        with open(file_path, "r") as file_path:
             for _ in range(1):
-                line = file.readline()
+                line = file_path.readline()
     for _ in line.split():
         if _.startswith("runid"):
             runid = _.split("=")[1]
     return runid
+    # if file_path.endswith(".bam"):
+    #     with pysam.AlignmentFile(file_path, 'rb', check_sq=False) as file_path:
+    #         rg_tags = file_path.header.get('RG', [])
+    #         rg_tag = rg_tags[0]
+    #         line = rg_tag.get('DS', '').split(' ')[0]
+    # elif file_path.endswith(".gz"):
+    #     with gzip.open(file_path, "rt") as file_path:
+    #         for _ in range(1):
+    #             line = file_path.readline()
+    # else:
+    #     with open(file_path, "r") as file_path:
+    #         for _ in range(1):
+    #             line = file_path.readline()
+    # for _ in line.split():
+    #     if _.startswith("runid"):
+    #         runid = _.split("=")[1]
+    # return runid
 
 
 def unseen_files_in_watch_folder_dict(path, ignore_existing, minotour_api, fastq_dict, sequencing_statistics):

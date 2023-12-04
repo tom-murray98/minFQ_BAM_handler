@@ -225,9 +225,14 @@ def parse_fastq_file(
     # for read in gen:
     handle = gzip.open if fastq_path.endswith(".gz") else open
     with handle(fastq_path, "rt") as fh:
-        ### Parsing fastq
-        #   for desc, name, seq, qual in readfq(fh):
-        for desc, name, seq, qual in ReadBam(bam_file=fh).read_bam():  # Editied for parsing bam desc
+        #  If the flag is_bam is used, BAM files will be read and parsed
+        if args.is_bam:
+            read_file = ReadBam(bam_file=fh).read_bam()
+        # Otherwise, assume it's a fastq file
+        else:
+            read_file = readfq(fh)
+        for desc, name, seq, qual in read_file:
+   # Editied for parsing bam desc
             description_dict = parse_fastq_description(desc)
             counter += 1
             sequencing_stats.reads_seen += 1
@@ -269,24 +274,25 @@ def parse_fastq_file(
                 log.error("This gzipped file failed to upload - {}.".format(fastq_path))
                 raise Exception
                 # continue
-    # This chunk of code will mean we commit reads every time we get a new file?
-    for runs in run_dict:
-        run_dict[runs].read_names = []
-        run_dict[runs].commit_reads()
-    try:
-        # Update the fastq file entry on the server that says we provides file size to database record
-        payload = {
-            "file_name": str(check_fastq_path(fastq_path)),
-            "run_id": run_id,
-            "md5": get_file_size(fastq_path),
-            "run": run_dict[run_id].run,
-        }
-        fastq_file = minotour_api.put(EndPoint.FASTQ_FILE, json=payload, base_id=run_id)
-    except Exception as err:
-        log.error("Problem with uploading file {}".format(err))
-    sequencing_stats.time_per_file = time.time()
-    sequencing_stats.fastq_info[run_id]["files_processed"] += 1
-    return counter
+
+        # This chunk of code will mean we commit reads every time we get a new file?
+        for runs in run_dict:
+            run_dict[runs].read_names = []
+            run_dict[runs].commit_reads()
+        try:
+            # Update the fastq file entry on the server that says we provides file size to database record
+            payload = {
+                "file_name": str(check_fastq_path(fastq_path)),
+                "run_id": run_id,
+                "md5": get_file_size(fastq_path),
+                "run": run_dict[run_id].run,
+            }
+            fastq_file = minotour_api.put(EndPoint.FASTQ_FILE, json=payload, base_id=run_id)
+        except Exception as err:
+            log.error("Problem with uploading file {}".format(err))
+        sequencing_stats.time_per_file = time.time()
+        sequencing_stats.fastq_info[run_id]["files_processed"] += 1
+        return counter
 
 
 class FastqHandler(FileSystemEventHandler):
